@@ -65,6 +65,19 @@ st.markdown("""
     div[data-testid="stDownloadButton"] {width: 100%;}
     div[data-testid="stDownloadButton"] button {width: 100%; min-height: 2.8rem;
         justify-content: center; border-radius: 9px;}
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stNumberInput"] input,
+    div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+        background: #fff; border: 1px solid #aebdd0; border-radius: 9px;
+        box-shadow: 0 1px 2px rgba(31,55,86,.04);}
+    div[data-testid="stTextInput"] input:hover,
+    div[data-testid="stNumberInput"] input:hover,
+    div[data-testid="stSelectbox"] [data-baseweb="select"] > div:hover {
+        border-color: #6886ac;}
+    div[data-testid="stTextInput"] input:focus,
+    div[data-testid="stNumberInput"] input:focus,
+    div[data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within {
+        border-color: #3574c8; box-shadow: 0 0 0 2px rgba(53,116,200,.18);}
     .block-container > div > div > div > div > p {text-align: center;}
     div[data-testid="stTabs"] {margin-top: .25rem; width: calc(100% - 3.5rem);}
     div[data-testid="stTabs"] > div:first-child {width: 100%;}
@@ -73,11 +86,16 @@ st.markdown("""
     div[data-testid="stTabs"] button[role="tab"] {flex: 1 1 0; justify-content: center;
         min-height: 3.1rem; padding: .55rem .8rem; border-radius: 10px 10px 0 0;
         min-width: 0; white-space: normal; line-height: 1.2; background: rgba(255,255,255,.6);
-        color: #49617e; transition: background .18s ease, color .18s ease, transform .18s ease,
-            box-shadow .18s ease;}
+        color: #49617e; position: relative; overflow: hidden;
+        transition: transform .18s ease, box-shadow .18s ease;}
+    div[data-testid="stTabs"] button[role="tab"]::after {content: ""; position: absolute;
+        left: 16%; right: 16%; bottom: 0; height: 3px; border-radius: 3px 3px 0 0;
+        background: #3574c8; transform: scaleX(0); transform-origin: center;
+        transition: transform .2s ease;}
     div[data-testid="stTabs"] button[role="tab"]:hover {
-        background: #e7f0fc; color: #1d4f8f; transform: translateY(-2px);
+        background: rgba(255,255,255,.6); color: #49617e; transform: translateY(-2px);
         box-shadow: 0 5px 12px rgba(31,55,86,.1);}
+    div[data-testid="stTabs"] button[role="tab"]:hover::after {transform: scaleX(1);}
     div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
         background: #fff; border-bottom: 3px solid #3574c8; font-weight: 700;}
     div[data-testid="stForm"] button[kind="primary"],
