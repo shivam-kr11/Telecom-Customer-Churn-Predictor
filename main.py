@@ -294,7 +294,7 @@ correlation_data["target"] = y_train
 correlation_matrix = correlation_data.corr()
 print(correlation_matrix)
 plt.figure(figsize=(12, 8))
-sns.heatmap(correlation_matrix, cmap="coolwarm", annot=False)
+sns.heatmap(correlation_matrix, cmap="coolwarm", annot=True)
 plt.title("Training Customer Correlation Heatmap")
 plt.tight_layout()
 plt.savefig("reports/figures/04_training_correlation_matrix.png", dpi=200, bbox_inches="tight")
