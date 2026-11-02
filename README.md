@@ -1,33 +1,54 @@
-<<<<<<< HEAD
-# Telecom-Customer-Churn-Predictor
-A machine learning project that predicts telecom customer churn using five classifiers, with a FastAPI prediction service and Streamlit dashboard.
-=======
-# Customer Churn Prediction
+# Telecom Customer Churn Predictor
 
-This project uses customer account information to predict whether a telecom customer may leave the service. It includes a training script, a small prediction API, and a Streamlit interface for trying predictions.
+A beginner-friendly machine learning project that estimates whether a telecom customer may leave the service. It includes a model training workflow, a FastAPI prediction service, and a Streamlit dashboard.
+
+## What the project does
+
+- Checks and prepares the Telco Customer Churn dataset.
+- Trains and compares five classification models.
+- Provides an API and a simple web interface for predictions.
+- Saves prediction history locally so it can be reviewed, downloaded, or deleted.
 
 ## Dataset
 
-The project uses the Telco Customer Churn workbook at `data/raw/Telco_customer_churn.xlsx` (sheet: `Telco_Churn`). The `Churn Value` column is the outcome: `1` means the customer churned and `0` means they stayed.
+The project reads `data/raw/Telco_customer_churn.xlsx`, using the `Telco_Churn` worksheet. The target column is `Churn Value`: `1` means the customer churned and `0` means they stayed.
 
-Before training, the script checks the customer IDs and churn labels, converts `Total Charges` to numbers, and removes columns that duplicate or reveal the outcome (`Churn Label`, `Churn Score`, and `Churn Reason`). Missing numeric feature values are filled with medians calculated from the training data. Possible outliers are reported and plotted, but kept because they may represent real customers.
+During preparation, the training script checks customer IDs and verifies that `Churn Label` agrees with `Churn Value`. It converts `Total Charges` to a number, fills missing numeric inputs using medians from the training split, and reports possible outliers. Outliers are kept because they may be valid customer records. Columns that duplicate or reveal the outcome, including `Churn Label`, `Churn Score`, and `Churn Reason`, are excluded from model inputs.
 
-## Project files
+## Models and current results
 
-- `main.py` — explores and prepares the data, trains and compares models, saves charts and the selected model
-- `app.py` — serves predictions through a FastAPI API
-- `streamlit_app.py` — provides a form for predictions, prediction history, and model insights
-- `data/raw/` — source workbook
-- `data/processed/` — cleaned data created by the training workflow
-- `data/submissions/` — local prediction history created by Streamlit
-- `models/` — saved model and preprocessing information
-- `reports/model_comparison.csv` — accuracy, precision, recall, and F1 results
-- `reports/figures/` — charts created by the training workflow
-- `requirements.txt` — Python packages needed for the project
+The project compares Logistic Regression, AdaBoost, Naive Bayes, K-Nearest Neighbors, and Decision Tree. The table below comes from the current test split; values are rounded to one decimal place.
+
+| Model | Accuracy | Precision | Recall | F1 score |
+|---|---:|---:|---:|---:|
+| Logistic Regression | 80.5% | 65.0% | 57.5% | 61.0% |
+| AdaBoost | 80.5% | 65.1% | 57.0% | 60.8% |
+| Naive Bayes | 72.2% | 48.5% | 80.5% | 60.6% |
+| K-Nearest Neighbors | 74.7% | 52.2% | 52.9% | 52.6% |
+| Decision Tree | 71.8% | 47.0% | 48.4% | 47.7% |
+
+The saved model is selected by F1 score on a validation split taken from the training data. The separate test split is used for the comparison table. These results describe this dataset split and are not a guarantee of performance on future customers.
+
+## Project structure
+
+```text
+├── app.py                         # FastAPI prediction service
+├── main.py                        # Data preparation, training, evaluation, and export
+├── streamlit_app.py               # Streamlit dashboard and prediction form
+├── requirements.txt               # Python dependencies
+├── data/
+│   ├── raw/                        # Source Excel workbook
+│   ├── processed/                  # Generated cleaned data
+│   └── submissions/                # Local prediction history
+├── models/                         # Saved model and preprocessing tools
+└── reports/
+    ├── model_comparison.csv        # Model evaluation metrics
+    └── figures/                    # Generated charts
+```
 
 ## Set up
 
-Install Python 3.10 or newer. Open PowerShell in the project folder and run:
+Install Python 3.10 or newer. From the project folder, create and activate a virtual environment, then install the dependencies:
 
 ```powershell
 python -m venv .venv
@@ -44,29 +65,35 @@ Run the training script from the project folder:
 python main.py
 ```
 
-This creates the model comparison report, charts, and saved model. The script trains Logistic Regression, K-Nearest Neighbors, Naive Bayes, Decision Tree, and AdaBoost. For K-Nearest Neighbors, it tries values of K from 1 to 20 and chooses the one with the best F1 score on a holdout portion of the training data. It chooses the saved model using a validation split from the training data. The separate test split is used for the final comparison table, which reports accuracy, precision, recall, and F1 score.
+The script writes the model comparison to `reports/model_comparison.csv`, refreshes the charts in `reports/figures/`, and saves the selected model and preprocessing objects in `models/churn_model.pkl`. For K-Nearest Neighbors, it checks K values from 1 to 20 and selects one using validation F1.
 
-## Run the prediction app
+## Start the prediction app
 
-Start the API in one PowerShell window:
+Start the API in one terminal:
 
 ```powershell
 python -m uvicorn app:app --reload
 ```
 
-Then start Streamlit in a second window:
+In a second terminal, start the Streamlit app:
 
 ```powershell
 streamlit run streamlit_app.py
 ```
 
-Streamlit sends prediction requests to the local API at `http://127.0.0.1:8000`.
+The Streamlit app connects to the API at `http://127.0.0.1:8000`. The API documentation is available at `http://127.0.0.1:8000/docs` while the API is running.
 
-## How to read the results
+## Understanding the metrics
 
-The data is split into training and test groups while keeping the churn proportions similar. Preprocessing steps are learned from the training group and then applied to the test group. Customer IDs, location details, and outcome-related columns are left out of the model inputs.
+- **Accuracy:** the share of all predictions that were correct.
+- **Precision:** among customers predicted to churn, the share who did churn.
+- **Recall:** among customers who churned, the share the model found.
+- **F1 score:** a combined measure of precision and recall.
 
-Accuracy is the share of all predictions that were correct. Precision tells you how often a predicted churn was actually churn. Recall tells you how many actual churn cases the model found. F1 combines precision and recall into one score. These results come from the project’s test split and should be treated as a comparison of these models, not a guarantee of future performance.
+High recall can help find more customers at risk, while high precision means fewer false alarms. Which metric matters most depends on how the business plans to use the predictions.
 
-Streamlit stores prediction details locally in `data/submissions/prediction_inputs.json`, including optional name, email, and age fields. The Prediction History page can delete individual records or clear all saved history. Treat this file as sensitive and use the API only on a trusted machine; authentication is not implemented.
->>>>>>> b3124d8 (Project Done up to Ml model training, ui, fast api impleneted)
+## Local prediction history and privacy
+
+Prediction history is stored on the same machine in `data/submissions/prediction_inputs.json`. It can include the generated customer reference ID, account inputs, and optional name, email, and age. The history page lets you remove selected records or delete all saved records. Keep this file private and remove it when it is no longer needed.
+
+The API does not include authentication. Keep it on a trusted machine and do not expose it to the public internet as configured.
