@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from pathlib import Path
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -30,8 +31,17 @@ from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 
+#================ PROJECT PATHS ================
+BASE_DIR = Path(__file__).resolve().parent
+RAW_DATA_PATH = BASE_DIR / "data" / "raw" / "Telco_customer_churn.xlsx"
+REPORTS_DIR = BASE_DIR / "reports"
+FIGURES_DIR = REPORTS_DIR / "figures"
+MODELS_DIR = BASE_DIR / "models"
+FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
 #================ LOADING DATASET ================
-data = pd.read_excel("data/raw/Telco_customer_churn.xlsx", sheet_name="Telco_Churn")
+data = pd.read_excel(RAW_DATA_PATH, sheet_name="Telco_Churn")
 
 #================ OBJECTIVE 1: EXPLORE CUSTOMER CHURN DATA ================
 #================ BASIC DATASET INFORMATION ================
@@ -137,7 +147,7 @@ plt.title("Customer Churn Distribution")
 plt.xlabel("Churn (0 = Retained, 1 = Churned)")
 plt.ylabel("Number of Customers")
 plt.tight_layout()
-plt.savefig("reports/figures/01_target_distribution.png", dpi=200, bbox_inches="tight")
+plt.savefig(FIGURES_DIR / "01_target_distribution.png", dpi=200, bbox_inches="tight")
 plt.close()
 
 #================ NUMERICAL FEATURE DISTRIBUTION ================
@@ -151,7 +161,7 @@ axes[1, 0].set_title("Total Charges Distribution")
 sns.histplot(data["CLTV"], bins=20, kde=True, ax=axes[1, 1])
 axes[1, 1].set_title("Customer Lifetime Value Distribution")
 plt.tight_layout()
-plt.savefig("reports/figures/02_cleaned_feature_distributions.png", dpi=200, bbox_inches="tight")
+plt.savefig(FIGURES_DIR / "02_cleaned_feature_distributions.png", dpi=200, bbox_inches="tight")
 plt.close()
 
 #================ OBJECTIVE 3: SEPARATING FEATURES AND TARGET ================
@@ -230,7 +240,7 @@ for position in range(len(boxplot_columns)):
     sns.boxplot(x=X_train_numeric[column], ax=axis)
     axis.set_title(column)
 plt.tight_layout()
-plt.savefig("reports/figures/03_outlier_boxplots.png", dpi=200, bbox_inches="tight")
+plt.savefig(FIGURES_DIR / "03_outlier_boxplots.png", dpi=200, bbox_inches="tight")
 plt.close()
 
 #================ LABEL ENCODING GENDER ================
@@ -297,7 +307,7 @@ plt.figure(figsize=(12, 8))
 sns.heatmap(correlation_matrix, cmap="coolwarm", annot=True)
 plt.title("Training Customer Correlation Heatmap")
 plt.tight_layout()
-plt.savefig("reports/figures/04_training_correlation_matrix.png", dpi=200, bbox_inches="tight")
+plt.savefig(FIGURES_DIR / "04_training_correlation_matrix.png", dpi=200, bbox_inches="tight")
 plt.close()
 
 #================ OBJECTIVE 4: PREDICT CUSTOMER CHURN ================
@@ -323,7 +333,7 @@ plt.title("Logistic Regression Confusion Matrix")
 plt.xlabel("Predicted")
 plt.ylabel("Actual")
 plt.tight_layout()
-plt.savefig("reports/figures/05_logistic_regression_confusion_matrix.png", dpi=200, bbox_inches="tight")
+plt.savefig(FIGURES_DIR / "05_logistic_regression_confusion_matrix.png", dpi=200, bbox_inches="tight")
 plt.close()
 
 #================ CHECKING K VALUES FOR KNN ================
@@ -469,7 +479,7 @@ comparison = comparison.reset_index(drop=True)
 
 print("================ MODEL COMPARISON ================")
 print(comparison)
-comparison.to_csv("reports/model_comparison.csv", index=False)
+comparison.to_csv(REPORTS_DIR / "model_comparison.csv", index=False)
 
 #================ MODEL ACCURACY COMPARISON ================
 plt.figure(figsize=(8, 5))
@@ -479,7 +489,7 @@ plt.xlabel("Model")
 plt.ylabel("Accuracy")
 plt.xticks(rotation=20)
 plt.tight_layout()
-plt.savefig("reports/figures/06_model_accuracy_comparison.png", dpi=200, bbox_inches="tight")
+plt.savefig(FIGURES_DIR / "06_model_accuracy_comparison.png", dpi=200, bbox_inches="tight")
 plt.close()
 
 #================ MODEL F1 SCORE COMPARISON ================
@@ -490,7 +500,7 @@ plt.xlabel("Model")
 plt.ylabel("F1 Score")
 plt.xticks(rotation=20)
 plt.tight_layout()
-plt.savefig("reports/figures/07_model_f1_score_comparison.png", dpi=200, bbox_inches="tight")
+plt.savefig(FIGURES_DIR / "07_model_f1_score_comparison.png", dpi=200, bbox_inches="tight")
 plt.close()
 
 #================ CONFUSION MATRIX COMPARISON ================
@@ -511,7 +521,7 @@ for position in range(len(model_names), len(flat_axes)):
     fig.delaxes(flat_axes[position])
     
 plt.tight_layout()
-plt.savefig("reports/figures/08_model_confusion_matrices.png", dpi=200, bbox_inches="tight")
+plt.savefig(FIGURES_DIR / "08_model_confusion_matrices.png", dpi=200, bbox_inches="tight")
 plt.close()
 
 #================ SAVING THE BEST MODEL ================
@@ -545,7 +555,7 @@ joblib.dump(
         "model_name": best_model_name,
         "best_k": best_k,
     },
-    "models/churn_model.pkl",
+    MODELS_DIR / "churn_model.pkl",
 )
 
 print("Best model saved:", best_model_name)

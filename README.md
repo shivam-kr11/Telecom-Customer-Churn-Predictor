@@ -83,6 +83,20 @@ streamlit run streamlit_app.py
 
 The Streamlit app connects to the API at `http://127.0.0.1:8000`. The API documentation is available at `http://127.0.0.1:8000/docs` while the API is running.
 
+## Deploy
+
+The web interface and prediction API are separate services. The repository includes a `render.yaml` blueprint for deploying the FastAPI service to Render. In Render, create a Blueprint from this repository and wait for the API service to finish deploying. The saved model at `models/churn_model.pkl` must be included in the repository.
+
+Deploy the Streamlit interface separately on [Streamlit Community Cloud](https://share.streamlit.io/), selecting this repository and `streamlit_app.py` as the app file. In the app's **Settings → Secrets**, add the public URL of the deployed API:
+
+```toml
+API_BASE_URL = "https://your-api-service.onrender.com"
+```
+
+The app also reads `API_BASE_URL` from an environment variable. For local use, it defaults to `http://127.0.0.1:8000`. Do not include a trailing slash in the configured URL (the app removes it automatically).
+
+The prediction history is written to the app's local filesystem. Hosted app filesystems may be temporary and can be reset during a redeploy or restart, so this history is not a permanent cloud database.
+
 ## Understanding the metrics
 
 - **Accuracy:** the share of all predictions that were correct.

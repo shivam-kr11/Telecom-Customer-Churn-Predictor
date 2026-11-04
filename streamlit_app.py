@@ -3,6 +3,7 @@
 #=======================
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import secrets
 import string
@@ -17,7 +18,13 @@ import streamlit as st
 #=======================
 BASE_DIR = Path(__file__).resolve().parent
 HISTORY_PATH = BASE_DIR / "data" / "submissions" / "prediction_inputs.json"
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = os.getenv("API_BASE_URL", "").strip()
+if not API_BASE_URL:
+    try:
+        API_BASE_URL = st.secrets.get("API_BASE_URL", "http://127.0.0.1:8000")
+    except (FileNotFoundError, AttributeError):
+        API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = API_BASE_URL.rstrip("/")
 
 st.set_page_config(
     page_title="Customer Churn Prediction",
@@ -66,17 +73,22 @@ st.markdown("""
     div[data-testid="stDownloadButton"] button {width: 100%; min-height: 2.8rem;
         justify-content: center; border-radius: 9px;}
     div[data-testid="stTextInput"] input,
-    div[data-testid="stNumberInput"] input,
     div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
         background: #fff; border: 1px solid #aebdd0; border-radius: 9px;
         box-shadow: 0 1px 2px rgba(31,55,86,.04);}
+    div[data-testid="stNumberInput"] [data-baseweb="input"] {
+        background: #fff; border: 1px solid #aebdd0; border-radius: 9px;
+        overflow: hidden; box-shadow: 0 1px 2px rgba(31,55,86,.04);}
+    div[data-testid="stNumberInput"] input {background: transparent; border: 0; box-shadow: none;}
+    div[data-testid="stNumberInput"] button {background: #fff; border: 0;}
     div[data-testid="stTextInput"] input:hover,
-    div[data-testid="stNumberInput"] input:hover,
     div[data-testid="stSelectbox"] [data-baseweb="select"] > div:hover {
         border-color: #6886ac;}
+    div[data-testid="stNumberInput"] [data-baseweb="input"]:hover {border-color: #6886ac;}
     div[data-testid="stTextInput"] input:focus,
-    div[data-testid="stNumberInput"] input:focus,
     div[data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within {
+        border-color: #3574c8; box-shadow: 0 0 0 2px rgba(53,116,200,.18);}
+    div[data-testid="stNumberInput"] [data-baseweb="input"]:focus-within {
         border-color: #3574c8; box-shadow: 0 0 0 2px rgba(53,116,200,.18);}
     .block-container > div > div > div > div > p {text-align: center;}
     div[data-testid="stTabs"] {margin-top: .25rem; width: calc(100% - 3.5rem);}
