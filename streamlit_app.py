@@ -1,36 +1,28 @@
 #=======================
 #       Import Libraries
 #=======================
-from datetime import datetime, timezone
-import json
-import os
-from pathlib import Path
-import secrets
-import string
+from datetime import datetime, timezone  # Adds the current time to saved predictions.
+import json  # Reads and writes prediction history as a JSON file.
+from pathlib import Path  # Builds file paths that work across operating systems.
+import secrets  # Creates unpredictable customer reference IDs.
+import string  # Provides the letters and numbers used in those IDs.
 
-import pandas as pd
-import requests
-import streamlit as st
+import pandas as pd  # Displays prediction history in tables and charts.
+import requests  # Sends prediction requests to the FastAPI service.
+import streamlit as st  # Builds the interactive web interface.
+from login_page import load_app_settings, show_login, show_logout_button
 
 
 #=======================
 #       Initialize App
 #=======================
-BASE_DIR = Path(__file__).resolve().parent
-HISTORY_PATH = BASE_DIR / "data" / "submissions" / "prediction_inputs.json"
-API_BASE_URL = os.getenv("API_BASE_URL", "").strip()
-if not API_BASE_URL:
-    try:
-        API_BASE_URL = st.secrets.get("API_BASE_URL", "http://127.0.0.1:8000")
-    except (FileNotFoundError, AttributeError):
-        API_BASE_URL = "http://127.0.0.1:8000"
-API_BASE_URL = API_BASE_URL.rstrip("/")
-
 st.set_page_config(
     page_title="Customer Churn Prediction",
     page_icon="📊",
     layout="wide",
 )
+
+BASE_DIR = Path(__file__).resolve().parent
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
@@ -133,32 +125,56 @@ st.markdown("""
 st.markdown('<div class="app-eyebrow">Customer retention workspace</div>', unsafe_allow_html=True)
 st.title("Customer churn prediction")
 
+app_settings = load_app_settings()
+API_BASE_URL = app_settings["API_BASE_URL"]
+API_ACCESS_KEY = app_settings["API_ACCESS_KEY"]
+
+# Stop here until the user has signed in successfully.
+if not show_login(app_settings):
+    st.stop()
+
+show_logout_button()
+
 
 #=======================
 #       Helper Functions
 #=======================
 @st.cache_data(ttl=10)
 def get_model_info():
-    response = requests.get(f"{API_BASE_URL}/model-info", timeout=5)
+    response = requests.get(
+        f"{API_BASE_URL}/model-info",
+        headers={"X-API-Key": API_ACCESS_KEY},
+        timeout=5,
+    )
     response.raise_for_status()
     return response.json()
 
 
 def load_history():
-    if not HISTORY_PATH.exists():
-        return []
     try:
-        with HISTORY_PATH.open("r", encoding="utf-8") as history_file:
-            history = json.load(history_file)
-        return history if isinstance(history, list) else []
-    except (OSError, json.JSONDecodeError):
+        response = requests.get(
+            f"{API_BASE_URL}/history",
+            headers={"X-API-Key": API_ACCESS_KEY},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json().get("records", [])
+    except requests.RequestException as error:
+        st.error(f"Could not load saved predictions from the database: {error}")
         return []
 
 
-def save_history(history):
-    HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with HISTORY_PATH.open("w", encoding="utf-8") as history_file:
-        json.dump(history, history_file, indent=2, ensure_ascii=False)
+def send_history_request(method, url, **request_options):
+    """Send a database history request through the protected API."""
+    response = requests.request(
+        method,
+        f"{API_BASE_URL}{url}",
+        headers={"X-API-Key": API_ACCESS_KEY},
+        timeout=15,
+        **request_options,
+    )
+    response.raise_for_status()
+    return response
 
 
 def get_category_options(model_info, column):
@@ -177,9 +193,9 @@ def make_customer_id():
 
 def make_history_frame(history):
     rows = []
-    for record_number, record in enumerate(history):
+    for record in history:
         row = {
-            "Record": record_number,
+            "Record": record.get("id"),
             "Customer ID": record.get("customer_id", ""),
             "Name": record.get("name", ""),
             "Email": record.get("email", ""),
@@ -302,6 +318,7 @@ with prediction_tab:
             response = requests.post(
                 f"{API_BASE_URL}/predict",
                 json={"features": features},
+                headers={"X-API-Key": API_ACCESS_KEY},
                 timeout=30,
             )
             response.raise_for_status()
@@ -319,10 +336,8 @@ with prediction_tab:
                 "threshold": result["threshold"],
                 "features": features,
             }
-            history = load_history()
-            history.insert(0, record)
-            save_history(history[:500])
-            st.success("Estimate complete. This prediction was saved in local history.")
+            send_history_request("POST", "/history", json=record)
+            st.success("Estimate complete. This prediction was saved to the database.")
         except requests.RequestException as error:
             if isinstance(error, requests.HTTPError) and error.response is not None:
                 try:
@@ -405,12 +420,11 @@ with history_tab:
             st.warning("Confirm deletion of the selected prediction records.")
             confirm_columns = st.columns(2)
             if confirm_columns[0].button("Confirm deletion", type="primary"):
-                delete_records = set(st.session_state["confirm_delete_records"])
-                updated_history = [
-                    record for record_number, record in enumerate(history)
-                    if record_number not in delete_records
-                ]
-                save_history(updated_history)
+                send_history_request(
+                    "POST",
+                    "/history/delete-selected",
+                    json=st.session_state["confirm_delete_records"],
+                )
                 st.session_state.pop("confirm_delete_records", None)
                 st.rerun()
             if confirm_columns[1].button("Cancel deletion"):
@@ -437,10 +451,10 @@ with history_tab:
         if st.button("Delete all prediction history"):
             st.session_state["confirm_delete_all"] = True
         if st.session_state.get("confirm_delete_all"):
-            st.warning("This permanently removes all locally saved prediction records.")
+            st.warning("This permanently removes all prediction records from the database.")
             clear_columns = st.columns(2)
             if clear_columns[0].button("Confirm: delete all", type="primary"):
-                save_history([])
+                send_history_request("DELETE", "/history")
                 st.session_state.pop("confirm_delete_all", None)
                 st.rerun()
             if clear_columns[1].button("Cancel", key="cancel_delete_all"):
@@ -459,7 +473,7 @@ with insights_tab:
     st.write("Inputs used by the model:")
     st.write(model_info["selected_input_columns"])
     st.caption(
-        "Prediction history is stored locally in data/submissions/prediction_inputs.json. "
+        "Prediction history is stored in the connected MySQL database. "
         "The model returns a churn probability; the threshold converts it to a class label."
     )
 

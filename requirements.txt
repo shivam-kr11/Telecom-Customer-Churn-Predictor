@@ -9,3 +9,4 @@ fastapi
 uvicorn
 streamlit
 requests
+mysql-connector-python

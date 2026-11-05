@@ -7,7 +7,7 @@ A beginner-friendly machine learning project that estimates whether a telecom cu
 - Checks and prepares the Telco Customer Churn dataset.
 - Trains and compares five classification models.
 - Provides an API and a simple web interface for predictions.
-- Saves prediction history locally so it can be reviewed, downloaded, or deleted.
+- Saves prediction history in MySQL so it can be reviewed, downloaded, or deleted.
 
 ## Dataset
 
@@ -33,13 +33,17 @@ The saved model is selected by F1 score on a validation split taken from the tra
 
 ```text
 ├── app.py                         # FastAPI prediction service
+├── auth.py                        # Reads private settings and checks credentials
+├── database.py                    # Creates and manages MySQL prediction history
+├── login_page.py                  # Displays the sign-in screen
 ├── main.py                        # Data preparation, training, evaluation, and export
 ├── streamlit_app.py               # Streamlit dashboard and prediction form
 ├── requirements.txt               # Python dependencies
+├── .streamlit/
+│   └── secrets.toml.example       # Template for local private settings
 ├── data/
 │   ├── raw/                        # Source Excel workbook
 │   ├── processed/                  # Generated cleaned data
-│   └── submissions/                # Local prediction history
 ├── models/                         # Saved model and preprocessing tools
 └── reports/
     ├── model_comparison.csv        # Model evaluation metrics
@@ -48,7 +52,7 @@ The saved model is selected by F1 score on a validation split taken from the tra
 
 ## Set up
 
-Install Python 3.10 or newer. From the project folder, create and activate a virtual environment, then install the dependencies:
+Install Python 3.11 or newer. From the project folder, create and activate a virtual environment, then install the dependencies:
 
 ```powershell
 python -m venv .venv
@@ -69,6 +73,14 @@ The script writes the model comparison to `reports/model_comparison.csv`, refres
 
 ## Start the prediction app
 
+Authentication helpers are in `auth.py`, and the sign-in screen is in `login_page.py`. Prediction history is handled by `database.py` and saved in MySQL. Create a local settings file once by copying `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml`, then replace the example values with your MySQL Workbench connection details and login secrets. The real `secrets.toml` file is ignored by Git, so it won’t be committed.
+
+```powershell
+Copy-Item .streamlit/secrets.toml.example .streamlit/secrets.toml
+```
+
+Use the same `API_ACCESS_KEY` for the local API and Streamlit app. Set `DB_USER` and `DB_PASSWORD` to the MySQL account you use with Workbench. `DB_NAME` should match the schema you created, `customer_churn_db`. The app creates its `prediction_history` table the first time it saves or loads history. You only need to edit the private settings file once; the values remain available when you open new terminal windows.
+
 Start the API in one terminal:
 
 ```powershell
@@ -85,17 +97,20 @@ The Streamlit app connects to the API at `http://127.0.0.1:8000`. The API docume
 
 ## Deploy
 
-The web interface and prediction API are separate services. The repository includes a `render.yaml` blueprint for deploying the FastAPI service to Render. In Render, create a Blueprint from this repository and wait for the API service to finish deploying. The saved model at `models/churn_model.pkl` must be included in the repository.
+The web interface and prediction API are separate services. The repository includes a `render.yaml` blueprint for deploying the FastAPI service to Render. In Render, configure `API_ACCESS_KEY` and the `DB_*` settings. The API needs a MySQL server that Render can reach; your local MySQL Workbench server is only reachable from your computer, so it cannot serve the deployed API. The saved model at `models/churn_model.pkl` must be included in the repository.
 
-Deploy the Streamlit interface separately on [Streamlit Community Cloud](https://share.streamlit.io/), selecting this repository and `streamlit_app.py` as the app file. In the app's **Settings → Secrets**, add the public URL of the deployed API:
+Deploy the Streamlit interface separately on [Streamlit Community Cloud](https://share.streamlit.io/), selecting this repository and `streamlit_app.py` as the app file. In the app's **Settings → Secrets**, add the public API URL, the shared login, and the same API key configured in Render:
 
 ```toml
 API_BASE_URL = "https://your-api-service.onrender.com"
+APP_USERNAME = "your-login-name"
+APP_PASSWORD = "use-a-strong-password"
+API_ACCESS_KEY = "the-same-long-random-secret-set-in-render"
 ```
 
-The app also reads `API_BASE_URL` from an environment variable. For local use, it defaults to `http://127.0.0.1:8000`. Do not include a trailing slash in the configured URL (the app removes it automatically).
+The app also reads these values from environment variables. For local use, `API_BASE_URL` defaults to `http://127.0.0.1:8000`. Do not include a trailing slash in the configured URL (the app removes it automatically). This project uses one shared login; it does not provide separate accounts or password reset.
 
-The prediction history is written to the app's local filesystem. Hosted app filesystems may be temporary and can be reset during a redeploy or restart, so this history is not a permanent cloud database.
+The Streamlit interface sends history requests to the API. The API reads and writes those records in the configured MySQL database.
 
 ## Understanding the metrics
 
@@ -108,6 +123,6 @@ High recall can help find more customers at risk, while high precision means few
 
 ## Local prediction history and privacy
 
-Prediction history is stored on the same machine in `data/submissions/prediction_inputs.json`. It can include the generated customer reference ID, account inputs, and optional name, email, and age. The history page lets you remove selected records or delete all saved records. Keep this file private and remove it when it is no longer needed.
+Prediction history is stored in the MySQL `prediction_history` table. Records can include the generated customer reference ID, account inputs, and optional name, email, and age. The history page lets you remove selected records or delete all saved records.
 
-The API does not include authentication. Keep it on a trusted machine and do not expose it to the public internet as configured.
+The prediction and model information API routes require the shared API key. The root health message remains public. The Streamlit app displays login and prediction history on its host, so use strong credentials and avoid entering real customer personal information in a public demo deployment.
